@@ -16,6 +16,18 @@ class MockAssistantStream extends EventStream<AssistantMessageEvent, AssistantMe
 	}
 }
 
+const mockModel = {
+	id: "mock-model",
+	name: "Mock Model",
+	api: "openai-responses" as const,
+	provider: "openai",
+	reasoning: false,
+	input: ["text"] as const,
+	cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+	contextWindow: 128000,
+	maxTokens: 4096,
+};
+
 function createAssistantMessage(text: string): AssistantMessage {
 	return {
 		role: "assistant",
@@ -42,7 +54,6 @@ describe("Agent", () => {
 
 		expect(agent.state).toBeDefined();
 		expect(agent.state.systemPrompt).toBe("");
-		expect(agent.state.model).toBeDefined();
 		expect(agent.state.thinkingLevel).toBe("off");
 		expect(agent.state.tools).toEqual([]);
 		expect(agent.state.messages).toEqual([]);
@@ -157,6 +168,7 @@ describe("Agent", () => {
 	it("should throw when prompt() called while streaming", async () => {
 		let abortSignal: AbortSignal | undefined;
 		const agent = new Agent({
+			initialState: { model: mockModel as any },
 			// Use a stream function that responds to abort
 			streamFn: (_model, _context, options) => {
 				abortSignal = options?.signal;
@@ -197,6 +209,7 @@ describe("Agent", () => {
 	it("should throw when continue() called while streaming", async () => {
 		let abortSignal: AbortSignal | undefined;
 		const agent = new Agent({
+			initialState: { model: mockModel as any },
 			streamFn: (_model, _context, options) => {
 				abortSignal = options?.signal;
 				const stream = new MockAssistantStream();
@@ -232,6 +245,7 @@ describe("Agent", () => {
 
 	it("continue() should process queued follow-up messages after an assistant turn", async () => {
 		const agent = new Agent({
+			initialState: { model: mockModel as any },
 			streamFn: () => {
 				const stream = new MockAssistantStream();
 				queueMicrotask(() => {
@@ -271,6 +285,7 @@ describe("Agent", () => {
 	it("continue() should keep one-at-a-time steering semantics from assistant tail", async () => {
 		let responseCount = 0;
 		const agent = new Agent({
+			initialState: { model: mockModel as any },
 			streamFn: () => {
 				const stream = new MockAssistantStream();
 				responseCount++;
@@ -315,6 +330,7 @@ describe("Agent", () => {
 	it("forwards sessionId to streamFn options", async () => {
 		let receivedSessionId: string | undefined;
 		const agent = new Agent({
+			initialState: { model: mockModel as any },
 			sessionId: "session-abc",
 			streamFn: (_model, _context, options) => {
 				receivedSessionId = options?.sessionId;
