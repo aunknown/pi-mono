@@ -382,5 +382,6 @@ export class StdinBuffer extends EventEmitter<StdinBufferEventMap> {
 
 	destroy(): void {
 		this.clear();
+		this.removeAllListeners();
 	}
 }

@@ -63,6 +63,7 @@ function execSimple(cmd: string, args: string[]): Promise<string> {
 			if (code === 0) resolve(stdout);
 			else reject(new Error(stderr || `Exit code ${code}`));
 		});
+		child.on("error", (err) => reject(err));
 	});
 }
 
@@ -120,7 +121,7 @@ class HostExecutor implements Executor {
 				options?.timeout && options.timeout > 0
 					? setTimeout(() => {
 							timedOut = true;
-							killProcessTree(child.pid!);
+							if (child.pid) killProcessTree(child.pid);
 						}, options.timeout * 1000)
 					: undefined;
 
@@ -180,8 +181,8 @@ class DockerExecutor implements Executor {
 	constructor(private container: string) {}
 
 	async exec(command: string, options?: ExecOptions): Promise<ExecResult> {
-		// Wrap command for docker exec
-		const dockerCmd = `docker exec ${this.container} sh -c ${shellEscape(command)}`;
+		// Wrap command for docker exec - escape container name to prevent injection
+		const dockerCmd = `docker exec ${shellEscape(this.container)} sh -c ${shellEscape(command)}`;
 		const hostExecutor = new HostExecutor();
 		return hostExecutor.exec(dockerCmd, options);
 	}
