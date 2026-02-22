@@ -315,6 +315,8 @@ export class ProcessTerminal implements Terminal {
 
 	setTitle(title: string): void {
 		// OSC 0;title BEL - set terminal window title
-		process.stdout.write(`\x1b]0;${title}\x07`);
+		// Strip control characters to prevent escape sequence injection
+		const sanitized = title.replace(/[\x00-\x1f\x07\x1b\x7f]/g, "");
+		process.stdout.write(`\x1b]0;${sanitized}\x07`);
 	}
 }

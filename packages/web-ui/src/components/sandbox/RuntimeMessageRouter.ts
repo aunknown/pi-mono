@@ -132,6 +132,11 @@ export class RuntimeMessageRouter {
 					return;
 				}
 
+				// Validate message source: only accept messages from the registered iframe
+				if (context.iframe && e.source !== context.iframe.contentWindow) {
+					return;
+				}
+
 				// Create respond() function for bidirectional communication
 				const respond = (response: any) => {
 					context.iframe?.contentWindow?.postMessage(

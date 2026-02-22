@@ -44,9 +44,14 @@ function escapeScriptContent(code: string): string {
 	return code.replace(/<\/script/gi, "<\\/script");
 }
 
+function escapeHtml(text: string): string {
+	return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 @customElement("sandbox-iframe")
 export class SandboxIframe extends LitElement {
 	private iframe?: HTMLIFrameElement;
+	private externalUrlHandlers: ((e: MessageEvent) => void)[] = [];
 
 	/**
 	 * Optional: Provide a function that returns the sandbox HTML URL.
@@ -68,7 +73,15 @@ export class SandboxIframe extends LitElement {
 		// Note: We don't unregister the sandbox here for loadContent() mode
 		// because the caller (HtmlArtifact) owns the sandbox lifecycle.
 		// For execute() mode, the sandbox is unregistered in the cleanup function.
+		this.removeExternalUrlHandlers();
 		this.iframe?.remove();
+	}
+
+	private removeExternalUrlHandlers(): void {
+		for (const handler of this.externalUrlHandlers) {
+			window.removeEventListener("message", handler);
+		}
+		this.externalUrlHandlers = [];
 	}
 
 	/**
@@ -113,7 +126,7 @@ export class SandboxIframe extends LitElement {
 				<html>
 				<body style="font-family: monospace; padding: 20px; background: #fff; color: #000;">
 					<h3 style="color: #c00;">HTML Validation Error</h3>
-					<pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap;">${validationError}</pre>
+					<pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap;">${escapeHtml(validationError)}</pre>
 				</body>
 				</html>
 			`;
@@ -134,6 +147,9 @@ export class SandboxIframe extends LitElement {
 	}
 
 	private loadViaSandboxUrl(sandboxId: string, completeHtml: string): void {
+		// Clean up previous handlers before adding new ones
+		this.removeExternalUrlHandlers();
+
 		// Create iframe pointing to sandbox URL
 		this.iframe = document.createElement("iframe");
 		this.iframe.sandbox.add("allow-scripts");
@@ -160,6 +176,7 @@ export class SandboxIframe extends LitElement {
 			}
 		};
 		window.addEventListener("message", externalUrlHandler);
+		this.externalUrlHandlers.push(externalUrlHandler);
 
 		// Listen for sandbox-ready and sandbox-error messages directly
 		const readyHandler = (e: MessageEvent) => {
@@ -205,6 +222,9 @@ export class SandboxIframe extends LitElement {
 	}
 
 	private loadViaSrcdoc(sandboxId: string, completeHtml: string): void {
+		// Clean up previous handlers before adding new ones
+		this.removeExternalUrlHandlers();
+
 		// Create iframe with srcdoc
 		this.iframe = document.createElement("iframe");
 		this.iframe.sandbox.add("allow-scripts");
@@ -225,6 +245,7 @@ export class SandboxIframe extends LitElement {
 			}
 		};
 		window.addEventListener("message", externalUrlHandler);
+		this.externalUrlHandlers.push(externalUrlHandler);
 
 		this.appendChild(this.iframe);
 	}
@@ -317,7 +338,7 @@ export class SandboxIframe extends LitElement {
 				signal.addEventListener("abort", abortHandler);
 			}
 
-			// Timeout handler (30 seconds)
+			// Timeout handler (120 seconds)
 			const timeoutId = setTimeout(() => {
 				if (!completed) {
 					completed = true;
