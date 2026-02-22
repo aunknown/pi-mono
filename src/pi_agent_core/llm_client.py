@@ -10,21 +10,18 @@ For other providers, pass a custom `stream_fn` to Agent.
 from __future__ import annotations
 
 import json
-import time
-from typing import Any, AsyncIterator, Callable, Optional, Protocol
+from typing import Any, Callable, Optional
 
 import httpx
 
 from .event_stream import EventStream
 from .types import (
     AssistantMessage,
-    ContentBlock,
     ImageContent,
     TextContent,
     ThinkingContent,
     ToolCall,
     ToolResultMessage,
-    Usage,
     UserMessage,
     AgentContext,
     AgentTool,

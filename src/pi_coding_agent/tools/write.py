@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import asyncio
 import os
-from pathlib import Path
 from typing import Callable, Optional
 
 from pi_agent_core.types import AgentTool, AgentToolResult, TextContent

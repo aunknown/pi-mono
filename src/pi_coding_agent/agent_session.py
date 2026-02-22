@@ -14,8 +14,6 @@ Modes use this class and add their own I/O layer on top.
 
 from __future__ import annotations
 
-import asyncio
-import time
 from dataclasses import dataclass
 from typing import Any, Callable, Optional
 
@@ -25,16 +23,14 @@ from pi_agent_core.types import (
     AgentEvent,
     AgentMessage,
     AgentTool,
-    AssistantMessage,
     ImageContent,
     TextContent,
     ThinkingLevel,
-    ToolResultMessage,
     UserMessage,
 )
 
-from .session_manager import SessionManager, SessionContext
-from .tools import create_coding_tools, create_all_tools
+from .session_manager import SessionManager
+from .tools import create_all_tools
 
 
 # ---------------------------------------------------------------------------
@@ -369,7 +365,7 @@ class AgentSession:
 
     def cycle_thinking_level(self) -> ThinkingLevel:
         """Cycle to the next thinking level."""
-        levels: list[ThinkingLevel] = ["off", "minimal", "low", "medium", "high"]
+        levels: list[ThinkingLevel] = ["off", "minimal", "low", "medium", "high", "xhigh"]
         current = self._agent.state.thinking_level
         current_idx = levels.index(current) if current in levels else 0
         next_level = levels[(current_idx + 1) % len(levels)]

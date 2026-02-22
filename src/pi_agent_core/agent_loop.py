@@ -14,8 +14,6 @@ The agent loop:
 from __future__ import annotations
 
 import asyncio
-import json
-import time
 from typing import Any, Callable, Optional
 
 from .event_stream import EventStream
@@ -39,10 +37,8 @@ from .types import (
     ToolResultMessage,
     TurnEndEvent,
     TurnStartEvent,
-    UserMessage,
 )
 from .llm_client import (
-    AssistantMessageEvent,
     StreamFn,
     StreamOptions,
     stream_anthropic,

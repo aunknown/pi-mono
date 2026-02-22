@@ -8,18 +8,15 @@ from __future__ import annotations
 
 import asyncio
 import os
-import subprocess
 import sys
 import tempfile
-import time
-from typing import Any, Callable, Optional
+from typing import Callable, Optional
 
 from pi_agent_core.types import AgentTool, AgentToolResult, TextContent
 
 from .truncate import (
     DEFAULT_MAX_BYTES,
     DEFAULT_MAX_LINES,
-    TruncationResult,
     format_size,
     truncate_tail,
 )

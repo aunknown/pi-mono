@@ -7,8 +7,7 @@ Mirrors agent.ts from @mariozechner/pi-agent-core.
 from __future__ import annotations
 
 import asyncio
-import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Callable, Optional
 
 from .agent_loop import (
@@ -16,7 +15,6 @@ from .agent_loop import (
     agent_loop,
     agent_loop_continue,
 )
-from .event_stream import EventStream
 from .llm_client import StreamFn, StreamOptions, stream_anthropic
 from .types import (
     AgentContext,
@@ -28,16 +26,8 @@ from .types import (
     ImageContent,
     TextContent,
     ThinkingLevel,
-    ToolResultMessage,
     UserMessage,
     AgentEndEvent,
-    AgentStartEvent,
-    MessageEndEvent,
-    MessageStartEvent,
-    MessageUpdateEvent,
-    ToolExecutionEndEvent,
-    ToolExecutionStartEvent,
-    TurnEndEvent,
 )
 
 

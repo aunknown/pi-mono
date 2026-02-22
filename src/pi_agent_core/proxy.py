@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import time
 from typing import Any, Optional
 
 import httpx
@@ -302,7 +301,6 @@ def _process_proxy_event(
 
 def _serialize_message(msg: Any) -> dict:
     """Serialize an AgentMessage to dict for the proxy."""
-    role = getattr(msg, "role", None)
     if hasattr(msg, "model_dump"):
         return msg.model_dump()
     return msg if isinstance(msg, dict) else {}

@@ -10,7 +10,7 @@ import asyncio
 import base64
 import os
 from pathlib import Path
-from typing import Optional, Callable, Union
+from typing import Optional, Callable
 
 from pi_agent_core.types import AgentTool, AgentToolResult, ImageContent, TextContent
 
@@ -18,7 +18,6 @@ from .path_utils import resolve_read_path
 from .truncate import (
     DEFAULT_MAX_BYTES,
     DEFAULT_MAX_LINES,
-    TruncationResult,
     format_size,
     truncate_head,
 )
