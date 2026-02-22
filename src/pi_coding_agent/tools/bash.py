@@ -8,18 +8,15 @@ from __future__ import annotations
 
 import asyncio
 import os
-import subprocess
 import sys
 import tempfile
-import time
-from typing import Any, Callable, Optional
+from typing import Callable, Optional
 
 from pi_agent_core.types import AgentTool, AgentToolResult, TextContent
 
 from .truncate import (
     DEFAULT_MAX_BYTES,
     DEFAULT_MAX_LINES,
-    TruncationResult,
     format_size,
     truncate_tail,
 )
@@ -54,13 +51,13 @@ async def _run_bash_command(
     """
     shell = "/bin/bash" if sys.platform != "win32" else "cmd.exe"
 
+    proc = None
     try:
         proc = await asyncio.create_subprocess_shell(
             command,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
             cwd=cwd,
-            shell=False,
             executable=shell,
         )
 
@@ -84,7 +81,8 @@ async def _run_bash_command(
                 await asyncio.gather(read_output(), proc.wait())
         except asyncio.TimeoutError:
             try:
-                proc.kill()
+                if proc is not None:
+                    proc.kill()
             except ProcessLookupError:
                 pass
             raise TimeoutError(f"Command timed out after {timeout} seconds")
@@ -93,7 +91,8 @@ async def _run_bash_command(
 
     except asyncio.CancelledError:
         try:
-            proc.kill()
+            if proc is not None:
+                proc.kill()
         except Exception:
             pass
         raise

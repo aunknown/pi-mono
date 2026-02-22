@@ -14,8 +14,6 @@ The agent loop:
 from __future__ import annotations
 
 import asyncio
-import json
-import time
 from typing import Any, Callable, Optional
 
 from .event_stream import EventStream
@@ -39,10 +37,8 @@ from .types import (
     ToolResultMessage,
     TurnEndEvent,
     TurnStartEvent,
-    UserMessage,
 )
 from .llm_client import (
-    AssistantMessageEvent,
     StreamFn,
     StreamOptions,
     stream_anthropic,
@@ -88,7 +84,7 @@ def agent_loop(
 
         await _run_loop(current_context, new_messages, options, signal, stream, stream_fn)
 
-    asyncio.ensure_future(run())
+    asyncio.create_task(run())
     return stream
 
 
@@ -126,7 +122,7 @@ def agent_loop_continue(
 
         await _run_loop(current_context, new_messages, options, signal, stream, stream_fn)
 
-    asyncio.ensure_future(run())
+    asyncio.create_task(run())
     return stream
 
 
@@ -284,7 +280,6 @@ async def _stream_assistant_response(
         resolved_key = await options.get_api_key(stream_opts.provider)
         if resolved_key:
             # Create a copy of options with resolved key
-            import dataclasses
             stream_opts = StreamOptions(
                 api_key=resolved_key,
                 base_url=stream_opts.base_url,

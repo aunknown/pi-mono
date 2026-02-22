@@ -7,7 +7,10 @@ Mirrors event-bus.ts from pi-coding-agent.
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Any, Callable
+
+logger = logging.getLogger(__name__)
 
 
 class EventBus:
@@ -32,9 +35,14 @@ class EventBus:
             try:
                 result = handler(data)
                 if asyncio.iscoroutine(result):
-                    asyncio.ensure_future(result)
+                    task = asyncio.create_task(result)
+                    task.add_done_callback(
+                        lambda t: logger.warning(
+                            "Async event handler error (%s): %s", channel, t.exception()
+                        ) if not t.cancelled() and t.exception() else None
+                    )
             except Exception as e:
-                print(f"Event handler error ({channel}): {e}")
+                logger.warning("Event handler error (%s): %s", channel, e)
 
     def on(self, channel: str, handler: Callable) -> Callable[[], None]:
         """

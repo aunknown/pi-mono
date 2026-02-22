@@ -68,9 +68,9 @@ def _python_find(
 
     # Convert glob to fnmatch pattern (simplified)
     # Handle ** by walking recursively
-    simple_pattern = pattern.lstrip("**/")
-    if not simple_pattern:
-        simple_pattern = pattern
+    simple_pattern = pattern
+    if simple_pattern.startswith("**/"):
+        simple_pattern = simple_pattern[3:]
 
     for root, dirs, files in os.walk(search_path):
         # Skip ignored directories

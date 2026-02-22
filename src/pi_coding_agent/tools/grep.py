@@ -110,7 +110,11 @@ def _python_grep(
                 fpath = os.path.join(root, fname)
                 if glob_pattern:
                     import fnmatch
-                    if not fnmatch.fnmatch(fname, glob_pattern.lstrip("*/")):
+                    # Extract filename pattern from the glob
+                    file_pattern = glob_pattern
+                    if file_pattern.startswith("**/"):
+                        file_pattern = file_pattern[3:]
+                    if not fnmatch.fnmatch(fname, file_pattern):
                         continue
                 files_to_search.append(fpath)
 

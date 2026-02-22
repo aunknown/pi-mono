@@ -11,7 +11,6 @@ requires-python = ">=3.11"
 dependencies = [
     "pydantic>=2.0",
     "httpx>=0.25",
-    "anyio>=4.0",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -27,3 +26,6 @@ dev = [
     "mypy>=1.0",
     "ruff>=0.1",
 ]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
