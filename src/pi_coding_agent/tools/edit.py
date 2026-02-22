@@ -117,7 +117,8 @@ def _fuzzy_find(content: str, search: str) -> tuple[bool, int, int]:
     """
     Find search text in content using fuzzy matching.
 
-    Returns (found, index, match_length).
+    Returns (found, index, match_length) where index and match_length
+    refer to positions in the original `content` string.
     """
     # Try exact match first
     idx = content.find(search)
@@ -132,10 +133,26 @@ def _fuzzy_find(content: str, search: str) -> tuple[bool, int, int]:
 
     norm_content = normalize_ws(content)
     norm_search = normalize_ws(search)
-    idx = norm_content.find(norm_search)
-    if idx != -1:
-        # Map back to original content (approximate)
-        return True, idx, len(search)
+    norm_idx = norm_content.find(norm_search)
+    if norm_idx != -1:
+        # Map the normalized index back to the original content.
+        # Build a mapping from normalized positions to original positions.
+        orig_idx = 0
+        norm_pos = 0
+        # Advance through original content to find the start position
+        while norm_pos < norm_idx and orig_idx < len(content):
+            orig_idx += 1
+            norm_pos = len(normalize_ws(content[:orig_idx]))
+
+        start = orig_idx
+        # Find the end position in original content
+        target_end = norm_idx + len(norm_search)
+        while norm_pos < target_end and orig_idx < len(content):
+            orig_idx += 1
+            norm_pos = len(normalize_ws(content[:orig_idx]))
+
+        match_len = orig_idx - start
+        return True, start, match_len
 
     return False, -1, 0
 
@@ -164,8 +181,8 @@ def create_edit_tool(cwd: str) -> AgentTool:
     ) -> AgentToolResult:
         path: str = params.get("path", "")
         # Support both snake_case and camelCase parameter names
-        old_text: str = params.get("old_text") or params.get("oldText", "")
-        new_text: str = params.get("new_text") or params.get("newText", "")
+        old_text: str = params.get("old_text") if "old_text" in params else params.get("oldText", "")
+        new_text: str = params.get("new_text") if "new_text" in params else params.get("newText", "")
 
         absolute_path = resolve_to_cwd(path, cwd)
 

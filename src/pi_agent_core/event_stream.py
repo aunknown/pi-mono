@@ -43,8 +43,15 @@ class EventStream(Generic[TEvent, TResult]):
         self._is_done = is_done
         self._get_result = get_result
         self._queue: asyncio.Queue[TEvent | _Sentinel] = asyncio.Queue()
-        self._result_future: asyncio.Future[TResult] = asyncio.get_event_loop().create_future()
+        self._result_future: asyncio.Future[TResult] | None = None
         self._ended = False
+
+    def _get_future(self) -> asyncio.Future[TResult]:
+        """Lazily create the result future on the running event loop."""
+        if self._result_future is None:
+            loop = asyncio.get_running_loop()
+            self._result_future = loop.create_future()
+        return self._result_future
 
     def push(self, event: TEvent) -> None:
         """Push an event onto the stream."""
@@ -53,8 +60,9 @@ class EventStream(Generic[TEvent, TResult]):
         self._queue.put_nowait(event)
         if self._is_done(event):
             result = self._get_result(event)
-            if not self._result_future.done():
-                self._result_future.set_result(result)
+            future = self._get_future()
+            if not future.done():
+                future.set_result(result)
 
     def end(self, result: TResult | None = None) -> None:
         """Signal end of stream."""
@@ -62,11 +70,12 @@ class EventStream(Generic[TEvent, TResult]):
             return
         self._ended = True
         self._queue.put_nowait(_SENTINEL)
-        if not self._result_future.done():
+        future = self._get_future()
+        if not future.done():
             if result is not None:
-                self._result_future.set_result(result)
+                future.set_result(result)
             else:
-                self._result_future.set_exception(
+                future.set_exception(
                     RuntimeError("Stream ended without a result")
                 )
 
@@ -76,12 +85,13 @@ class EventStream(Generic[TEvent, TResult]):
             return
         self._ended = True
         self._queue.put_nowait(_SENTINEL)
-        if not self._result_future.done():
-            self._result_future.set_exception(error)
+        future = self._get_future()
+        if not future.done():
+            future.set_exception(error)
 
     async def result(self) -> TResult:
         """Await the final result of the stream."""
-        return await self._result_future
+        return await self._get_future()
 
     def __aiter__(self) -> AsyncIterator[TEvent]:
         return self._iter()

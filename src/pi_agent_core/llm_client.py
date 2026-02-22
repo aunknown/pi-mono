@@ -185,7 +185,11 @@ def _build_anthropic_messages(context: AgentContext) -> list[dict]:
             else:
                 # Fallback: treat as dict
                 content_parts = msg.get("content", []) if isinstance(msg, dict) else []
-            result.append({"role": "user", "content": content_parts})
+            # Merge consecutive user messages
+            if result and result[-1]["role"] == "user":
+                result[-1]["content"].extend(content_parts)
+            else:
+                result.append({"role": "user", "content": content_parts})
 
         elif role == "assistant":
             if isinstance(msg, AssistantMessage):
@@ -194,10 +198,13 @@ def _build_anthropic_messages(context: AgentContext) -> list[dict]:
                     if isinstance(block, TextContent):
                         content_parts.append({"type": "text", "text": block.text})
                     elif isinstance(block, ThinkingContent):
-                        content_parts.append({
+                        thinking_block: dict = {
                             "type": "thinking",
                             "thinking": block.thinking,
-                        })
+                        }
+                        if block.thinking_signature:
+                            thinking_block["signature"] = block.thinking_signature
+                        content_parts.append(thinking_block)
                     elif isinstance(block, ToolCall):
                         content_parts.append({
                             "type": "tool_use",
@@ -222,15 +229,20 @@ def _build_anthropic_messages(context: AgentContext) -> list[dict]:
                                 "data": block.data,
                             },
                         })
-                result.append({
-                    "role": "user",
-                    "content": [{
-                        "type": "tool_result",
-                        "tool_use_id": msg.tool_call_id,
-                        "content": content_parts,
-                        "is_error": msg.is_error,
-                    }],
-                })
+                tool_result_block = {
+                    "type": "tool_result",
+                    "tool_use_id": msg.tool_call_id,
+                    "content": content_parts,
+                    "is_error": msg.is_error,
+                }
+                # Merge consecutive tool results into a single user message
+                if result and result[-1]["role"] == "user":
+                    result[-1]["content"].append(tool_result_block)
+                else:
+                    result.append({
+                        "role": "user",
+                        "content": [tool_result_block],
+                    })
 
     return result
 
@@ -269,7 +281,7 @@ def stream_anthropic(
     )
 
     import asyncio
-    asyncio.ensure_future(_run_anthropic_stream(context, options, stream))
+    asyncio.create_task(_run_anthropic_stream(context, options, stream))
     return stream
 
 
@@ -314,8 +326,11 @@ async def _run_anthropic_stream(
             budget = budget_map.get(options.reasoning, 4096)
             request_body["thinking"] = {"type": "enabled", "budget_tokens": budget}
 
+        if not options.api_key:
+            raise ValueError("Anthropic API key is required. Set it via StreamOptions(api_key=...)")
+
         headers = {
-            "x-api-key": options.api_key or "",
+            "x-api-key": options.api_key,
             "anthropic-version": "2023-06-01",
             "content-type": "application/json",
         }
@@ -362,7 +377,10 @@ async def _run_anthropic_stream(
                             partial.content.append(TextContent(text=""))
                             stream.push(TextStartEvent(list_idx, partial))
                         elif block["type"] == "thinking":
-                            partial.content.append(ThinkingContent(thinking=""))
+                            partial.content.append(ThinkingContent(
+                                thinking="",
+                                thinking_signature=block.get("signature"),
+                            ))
                             stream.push(ThinkingStartEvent(list_idx, partial))
                         elif block["type"] == "tool_use":
                             partial.content.append(ToolCall(

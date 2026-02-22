@@ -99,7 +99,7 @@ class Agent:
                 if hasattr(self._state, k):
                     setattr(self._state, k, v)
 
-        self._listeners: set[Callable[[AgentEvent], None]] = set()
+        self._listeners: list[Callable[[AgentEvent], None]] = []
         self._abort_event: Optional[asyncio.Event] = None
         self._convert_to_llm = opts.convert_to_llm or _default_convert_to_llm
         self._transform_context = opts.transform_context
@@ -116,8 +116,7 @@ class Agent:
 
         # Running state
         self._running_task: Optional[asyncio.Task] = None
-        self._idle_event = asyncio.Event()
-        self._idle_event.set()
+        self._idle_event: Optional[asyncio.Event] = None
 
     # -------------------------------------------------------------------------
     # Public properties
@@ -185,12 +184,20 @@ class Agent:
 
     def subscribe(self, fn: Callable[[AgentEvent], None]) -> Callable[[], None]:
         """Subscribe to agent events. Returns an unsubscribe function."""
-        self._listeners.add(fn)
-        return lambda: self._listeners.discard(fn)
+        self._listeners.append(fn)
+        def _unsubscribe():
+            if fn in self._listeners:
+                self._listeners.remove(fn)
+        return _unsubscribe
 
     def _emit(self, event: AgentEvent) -> None:
         for listener in list(self._listeners):
-            listener(event)
+            try:
+                result = listener(event)
+                if asyncio.iscoroutine(result):
+                    asyncio.ensure_future(result)
+            except Exception:
+                pass
 
     # -------------------------------------------------------------------------
     # Message queuing (steering and follow-up)
@@ -294,9 +301,16 @@ class Agent:
         if self._abort_event:
             self._abort_event.set()
 
+    def _get_idle_event(self) -> asyncio.Event:
+        """Lazily create the idle event on the running event loop."""
+        if self._idle_event is None:
+            self._idle_event = asyncio.Event()
+            self._idle_event.set()
+        return self._idle_event
+
     async def wait_for_idle(self) -> None:
         """Wait until the agent is no longer streaming."""
-        await self._idle_event.wait()
+        await self._get_idle_event().wait()
 
     def reset(self) -> None:
         """Reset agent to initial state."""
@@ -319,7 +333,7 @@ class Agent:
     ) -> None:
         """Execute the agent loop."""
         self._abort_event = asyncio.Event()
-        self._idle_event.clear()
+        self._get_idle_event().clear()
         self._state.is_streaming = True
         self._state.stream_message = None
         self._state.error = None
@@ -444,11 +458,15 @@ class Agent:
             self._state.stream_message = None
             self._state.pending_tool_calls = set()
             self._abort_event = None
-            self._idle_event.set()
+            self._get_idle_event().set()
 
 
 def _default_convert_to_llm(messages: list[AgentMessage]) -> list[AgentMessage]:
-    """Default: keep only LLM-compatible messages."""
+    """Default: keep only LLM-compatible messages.
+
+    Note: This duplicates the same function in agent_loop.py for backward
+    compatibility; both implementations must stay in sync.
+    """
     return [
         m for m in messages
         if getattr(m, "role", None) in ("user", "assistant", "toolResult")

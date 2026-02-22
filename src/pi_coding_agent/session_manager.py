@@ -375,9 +375,10 @@ class SessionManager:
                         break
 
             # Add compaction summary as a user message
+            from pi_agent_core.types import TextContent
             summary_message = UserMessage(
                 content=[
-                    {"type": "text", "text": latest_compaction.summary}
+                    TextContent(text=latest_compaction.summary)
                 ],
                 timestamp=latest_compaction.timestamp,
             )

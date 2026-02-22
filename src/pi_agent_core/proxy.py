@@ -87,7 +87,7 @@ def stream_proxy(
         ),
     )
 
-    asyncio.ensure_future(_run_proxy_stream(context, options, stream))
+    asyncio.create_task(_run_proxy_stream(context, options, stream))
     return stream
 
 
@@ -166,6 +166,9 @@ async def _run_proxy_stream(
                         if event:
                             stream.push(event)
 
+        # Ensure a DoneEvent is pushed if the proxy didn't send one
+        if partial.stop_reason != "error":
+            stream.push(DoneEvent(partial))
         stream.end(partial)
 
     except Exception as e:
@@ -196,6 +199,8 @@ def _process_proxy_event(
 
     elif event_type == "text_delta":
         idx = proxy_event["contentIndex"]
+        if idx >= len(partial.content):
+            return None
         delta = proxy_event["delta"]
         block = partial.content[idx]
         if isinstance(block, TextContent):
@@ -204,6 +209,8 @@ def _process_proxy_event(
 
     elif event_type == "text_end":
         idx = proxy_event["contentIndex"]
+        if idx >= len(partial.content):
+            return None
         block = partial.content[idx]
         if isinstance(block, TextContent):
             return TextEndEvent(idx, block.text, partial)
@@ -217,6 +224,8 @@ def _process_proxy_event(
 
     elif event_type == "thinking_delta":
         idx = proxy_event["contentIndex"]
+        if idx >= len(partial.content):
+            return None
         delta = proxy_event["delta"]
         block = partial.content[idx]
         if isinstance(block, ThinkingContent):
@@ -225,6 +234,8 @@ def _process_proxy_event(
 
     elif event_type == "thinking_end":
         idx = proxy_event["contentIndex"]
+        if idx >= len(partial.content):
+            return None
         block = partial.content[idx]
         if isinstance(block, ThinkingContent):
             return ThinkingEndEvent(idx, block.thinking, partial)
@@ -242,6 +253,8 @@ def _process_proxy_event(
 
     elif event_type == "toolcall_delta":
         idx = proxy_event["contentIndex"]
+        if idx >= len(partial.content):
+            return None
         delta = proxy_event["delta"]
         block = partial.content[idx]
         if isinstance(block, ToolCall):
@@ -257,6 +270,8 @@ def _process_proxy_event(
 
     elif event_type == "toolcall_end":
         idx = proxy_event["contentIndex"]
+        if idx >= len(partial.content):
+            return None
         block = partial.content[idx]
         if isinstance(block, ToolCall):
             return ToolCallEndEvent(idx, block, partial)
